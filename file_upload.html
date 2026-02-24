@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload Auto-Paste</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 500px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .upload-text span {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-section {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-section.show {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .url-section {
+            margin-top: 20px;
+        }
+
+        .url-label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .url-input-wrapper {
+            position: relative;
+            display: flex;
+            gap: 10px;
+        }
+
+        #edittext_image {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        #edittext_image:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .copy-btn {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .copy-btn.copied {
+            background: #48bb78;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            display: none;
+            background: #48bb78;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 15px;
+            animation: slideDown 0.3s ease;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f2ff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+            display: none;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 ပုံ Upload လုပ်ပါ</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">
+                ဤနေရာတွင် နှိပ်ပြီး ပုံရွေးပါ<br>
+                (သို့မဟုတ်) ပုံကို ဤနေရာသို့ ဆွဲချပါ
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Upload လုပ်နေပါသည်...</p>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <img class="preview-image" id="previewImage" alt="Preview">
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+
+        <div class="url-section">
+            <label class="url-label" for="edittext_image">Image URL (Auto-filled):</label>
+            <div class="url-input-wrapper">
+                <input type="text" id="edittext_image" placeholder="URL သည် အလိုအလျောက် ထည့်သွင်းပါလိမ့်မည်..." readonly>
+                <button class="copy-btn" id="copyBtn" onclick="copyURL()">Copy</button>
+            </div>
+        </div>
+
+        <div class="success-message" id="successMessage">
+            ✅ URL ကို Clipboard တွင် Copy လုပ်ပြီးပါပြီ!
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const loading = document.getElementById('loading');
+        const previewSection = document.getElementById('previewSection');
+        const previewImage = document.getElementById('previewImage');
+        const edittextImage = document.getElementById('edittext_image');
+        const fileInfo = document.getElementById('fileInfo');
+        const successMessage = document.getElementById('successMessage');
+
+        // Click to select file
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Drag and drop events
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('ကျေးဇူးပြု၍ ပုံ file type များသာ ရွေးချယ်ပါ!');
+                return;
+            }
+
+            // Show loading
+            loading.classList.add('show');
+            previewSection.classList.remove('show');
+
+            // Simulate upload process (replace with actual upload logic)
+            setTimeout(() => {
+                // Create object URL for preview
+                const imageUrl = URL.createObjectURL(file);
+                
+                // Show preview
+                previewImage.src = imageUrl;
+                previewSection.classList.add('show');
+                
+                // Show file info
+                fileInfo.innerHTML = `
+                    <strong>File Name:</strong> ${file.name}<br>
+                    <strong>Size:</strong> ${(file.size / 1024).toFixed(2)} KB<br>
+                    <strong>Type:</strong> ${file.type}
+                `;
+                fileInfo.classList.add('show');
+
+                // AUTO-PASTE: Simulate server URL (in real app, this would be the response from your server)
+                // Example: https://yourserver.com/uploads/filename.jpg
+                const simulatedServerUrl = `https://your-cdn.com/uploads/${Date.now()}_${file.name}`;
+                
+                // Auto-fill the URL into edittext_image
+                edittextImage.value = simulatedServerUrl;
+                
+                // Highlight the input to show it's been auto-filled
+                edittextImage.style.background = '#e8f5e9';
+                edittextImage.style.borderColor = '#48bb78';
+                
+                setTimeout(() => {
+                    edittextImage.style.background = '#f8f9fa';
+                    edittextImage.style.borderColor = '#e0e0e0';
+                }, 2000);
+
+                // Hide loading
+                loading.classList.remove('show');
+
+                // Optional: Auto-copy to clipboard
+                // copyURL();
+
+            }, 1500); // Simulate 1.5s upload time
+        }
+
+        function copyURL() {
+            const url = edittextImage.value;
+            if (!url) return;
+
+            navigator.clipboard.writeText(url).then(() => {
+                const copyBtn = document.getElementById('copyBtn');
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+                
+                successMessage.classList.add('show');
+                
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.classList.remove('copied');
+                    successMessage.classList.remove('show');
+                }, 2000);
+            }).catch(err => {
+                // Fallback for older browsers
+                edittextImage.select();
+                document.execCommand('copy');
+            });
+        }
+
+        // Paste from clipboard functionality (optional)
+        edittextImage.addEventListener('paste', (e) => {
+            // This allows manual paste if needed
+            console.log('Pasted:', e.clipboardData.getData('text'));
+        });
+    </script>
+</body>
+</html>
